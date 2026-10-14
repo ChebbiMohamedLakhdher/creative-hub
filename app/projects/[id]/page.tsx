@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { getCurrentUser } from "@/lib/auth";
 import LikeButton from "@/components/ui/LikeButton";
 import ProjectActions from "@/components/ui/ProjectActions";
@@ -16,21 +16,23 @@ import {
   getProjectById,
   incrementProjectViews,
   listProjects,
-} from "@/lib/local-store";
+} from "@/lib/store";
 
-const ThreeDViewer = dynamic(
+export const dynamic = "force-dynamic";
+
+const ThreeDViewer = dynamicImport(
   () => import("@/components/viewers/ThreeDViewer"),
   { ssr: false, loading: () => <ViewerSkeleton /> }
 );
-const AudioPlayer = dynamic(
+const AudioPlayer = dynamicImport(
   () => import("@/components/viewers/AudioPlayer"),
   { loading: () => <ViewerSkeleton /> }
 );
-const PDFViewer = dynamic(
+const PDFViewer = dynamicImport(
   () => import("@/components/viewers/PDFViewer"),
   { loading: () => <ViewerSkeleton /> }
 );
-const ImageGallery = dynamic(
+const ImageGallery = dynamicImport(
   () => import("@/components/viewers/ImageGallery"),
   { loading: () => <ViewerSkeleton /> }
 );

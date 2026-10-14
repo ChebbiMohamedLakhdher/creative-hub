@@ -1,7 +1,9 @@
 import HomeContent from "@/components/ui/HomeContent";
 import { Project } from "@/types";
 import { Sparkles } from "lucide-react";
-import { listProjects } from "@/lib/local-store";
+import { listProjects } from "@/lib/store";
+
+export const dynamic = "force-dynamic";
 
 async function getProjects(): Promise<Project[]> {
   return listProjects({ limit: 12, sort: "latest" });

@@ -25,6 +25,12 @@ export interface Project {
   user_liked?: boolean;
 }
 
+export interface ProjectSuggestion {
+  project: Project;
+  score: number;
+  reason: string;
+}
+
 export interface Like {
   id: string;
   user_id: string;

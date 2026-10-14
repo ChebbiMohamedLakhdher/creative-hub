@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { ensureCurrentUser } from "@/lib/local-store";
+import { ensureCurrentUser } from "@/lib/store";
 import { User } from "@/types";
 
 export async function getCurrentUser(): Promise<User | null> {

@@ -1,39 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCurrentUser } from "@/lib/auth";
-import { createProject, listProjects } from "@/lib/local-store";
-import { CreateProjectInput, ProjectCategory } from "@/types";
+import { createProject, listProjects } from "@/lib/store";
+import { createProjectSchema, projectQuerySchema } from "@/lib/validations/project";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const categoryParam = searchParams.get("category");
-  const category =
-    categoryParam && ["3D", "Image", "Audio", "PDF", "All"].includes(categoryParam)
-      ? (categoryParam as ProjectCategory | "All")
-      : undefined;
-  const search = searchParams.get("search")?.trim() || undefined;
-  const pageParam = Number.parseInt(searchParams.get("page") ?? "1", 10);
-  const limitParam = Number.parseInt(searchParams.get("limit") ?? "12", 10);
-  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-  const limit =
-    Number.isFinite(limitParam) && limitParam > 0
-      ? Math.min(limitParam, 50)
-      : 12;
-  const userId = searchParams.get("userId") || undefined;
-  const sort = searchParams.get("sort") ?? "latest";
+  const parsed = projectQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid project query" }, { status: 400 });
+  }
 
   const currentUser = await getCurrentUser();
-  const projects = await listProjects(
-    {
-      category,
-      search,
-      page,
-      limit,
-      userId,
-      sort: sort === "trending" ? "trending" : "latest",
-    },
-    currentUser?.id
-  );
+  const projects = await listProjects(parsed.data, currentUser?.id);
 
   return NextResponse.json({ projects });
 }
@@ -44,38 +23,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: Partial<CreateProjectInput>;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  const description =
-    typeof body.description === "string" ? body.description.trim() : undefined;
-  const category = body.category;
-  const file_url = typeof body.file_url === "string" ? body.file_url.trim() : "";
-  const thumbnail_url =
-    typeof body.thumbnail_url === "string" ? body.thumbnail_url.trim() : undefined;
-
-  if (!title || title.length > 100) {
-    return NextResponse.json({ error: "Invalid title" }, { status: 400 });
-  }
-
-  if (!category || !["3D", "Image", "Audio", "PDF"].includes(category)) {
-    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-  }
-
-  if (!file_url || file_url.length > 2048) {
-    return NextResponse.json({ error: "File URL is required" }, { status: 400 });
-  }
-
-  if (description && description.length > 5000) {
-    return NextResponse.json(
-      { error: "Description must be 5000 characters or fewer" },
-      { status: 400 }
-    );
+  const parsed = createProjectSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid project input" }, { status: 400 });
   }
 
   const user = await getCurrentUser();
@@ -88,13 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const project = await createProject(user.id, {
-      title,
-      description: description ?? undefined,
-      category,
-      file_url,
-      thumbnail_url: thumbnail_url ?? undefined,
-    });
+    const project = await createProject(user.id, parsed.data);
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {

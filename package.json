@@ -4,12 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "migrate:json": "tsx lib/scripts/migrate-json.ts",
+    "seed:demo": "tsx lib/scripts/seed-demo.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^5.7.6",
+    "@prisma/client": "^6.19.0",
+    "@supabase/supabase-js": "^2.117.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.40.0",
     "next": "14.2.35",
@@ -17,7 +25,8 @@
     "react-dom": "^18",
     "react-dropzone": "^20.1.1",
     "svix": "^2.3.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -26,7 +35,9 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "prisma": "^6.19.0",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

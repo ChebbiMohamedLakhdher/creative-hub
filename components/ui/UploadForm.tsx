@@ -16,6 +16,7 @@ export default function UploadForm() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<ProjectCategory>("Image");
   const [file, setFile] = useState<File | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,9 @@ export default function UploadForm() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("category", category);
+      if (category !== "Image" && previewFile) {
+        formData.append("preview", previewFile);
+      }
 
       setUploadProgress(30);
 
@@ -128,6 +132,7 @@ export default function UploadForm() {
           onChange={(e) => {
             setCategory(e.target.value as ProjectCategory);
             setFile(null);
+            setPreviewFile(null);
           }}
           className="w-full rounded-lg border border-border bg-card px-4 py-2.5 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
@@ -147,6 +152,22 @@ export default function UploadForm() {
           selectedFile={file}
         />
       </div>
+
+      {category !== "Image" && (
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Preview image <span className="font-normal text-muted">(optional)</span>
+          </label>
+          <FileUpload
+            category="Image"
+            onFileSelect={setPreviewFile}
+            selectedFile={previewFile}
+          />
+          <p className="mt-2 text-xs text-muted">
+            This image will be shown for your project on the home page.
+          </p>
+        </div>
+      )}
 
       {uploadProgress > 0 && uploadProgress < 100 && (
         <div className="space-y-2">

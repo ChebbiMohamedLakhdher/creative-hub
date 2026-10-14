@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { updateUser } from "@/lib/local-store";
+import { updateUser } from "@/lib/store";
+import { updateProfileSchema } from "@/lib/validations/profile";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -16,32 +17,23 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const updates: Record<string, string | null> = {};
-
-  if (typeof body.bio === "string") {
-    updates.bio = body.bio.trim().slice(0, 280) || null;
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (typeof body.username === "string") {
-    const username = body.username
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, "")
-      .slice(0, 24);
-    if (username.length < 3) {
-      return NextResponse.json(
-        { error: "Username must be at least 3 characters" },
-        { status: 400 }
-      );
-    }
-    updates.username = username;
+  const parsed = updateProfileSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid profile input" }, { status: 400 });
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(parsed.data).length === 0) {
     return NextResponse.json(user);
   }
 
-  const updated = await updateUser(user.id, updates);
+  const updated = await updateUser(user.id, parsed.data);
 
   if (!updated) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

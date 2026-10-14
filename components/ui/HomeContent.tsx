@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Project, ProjectCategory } from "@/types";
+import { Lightbulb, Loader2 } from "lucide-react";
+import { Project, ProjectCategory, ProjectSuggestion } from "@/types";
 import CategoryFilter from "./CategoryFilter";
 import SearchBar from "./SearchBar";
 import ProjectGrid from "./ProjectGrid";
@@ -25,6 +26,10 @@ export default function HomeContent({
   const [hasMore, setHasMore] = useState(initialProjects.length >= PAGE_SIZE);
   const [loading, setLoading] = useState(false);
   const skipNextFetch = useRef(true);
+  const [discoveryPrompt, setDiscoveryPrompt] = useState("");
+  const [suggestions, setSuggestions] = useState<ProjectSuggestion[]>([]);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -77,8 +82,73 @@ export default function HomeContent({
     fetchProjects(nextPage, true);
   };
 
+  const discover = async () => {
+    const prompt = discoveryPrompt.trim();
+    if (prompt.length < 3) {
+      setDiscoveryError("Describe what you want to make or find.");
+      return;
+    }
+    setDiscoveryLoading(true);
+    setDiscoveryError("");
+    try {
+      const response = await fetch(`/api/discover?q=${encodeURIComponent(prompt)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Search failed");
+      setSuggestions(data.suggestions ?? []);
+    } catch (error) {
+      setDiscoveryError(error instanceof Error ? error.message : "Search failed");
+      setSuggestions([]);
+    } finally {
+      setDiscoveryLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-12">
+      <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:p-7">
+        <div className="flex items-start gap-3">
+          <Lightbulb className="mt-1 h-5 w-5 shrink-0 text-primary" />
+          <div className="w-full">
+            <h2 className="text-xl font-bold text-foreground">Find inspiration for your next project</h2>
+            <p className="mt-1 text-sm text-muted">
+              Describe what you want to make, and we&apos;ll suggest useful work from the community.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={discoveryPrompt}
+                onChange={(event) => setDiscoveryPrompt(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void discover(); }}
+                maxLength={300}
+                placeholder="e.g. I need an ambient soundtrack for a short film"
+                className="min-h-11 flex-1 rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={() => void discover()}
+                disabled={discoveryLoading}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 font-medium text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {discoveryLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {discoveryLoading ? "Finding..." : "Suggest work"}
+              </button>
+            </div>
+            {discoveryError && <p className="mt-2 text-sm text-red-500">{discoveryError}</p>}
+            {suggestions.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-3 text-sm font-medium text-foreground">Suggested for you</p>
+                <ProjectGrid projects={suggestions.map(({ project }) => project)} />
+                <div className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2">
+                  {suggestions.map(({ project, reason }) => (
+                    <p key={project.id}><span className="font-medium text-foreground">{project.title}:</span> {reason}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!discoveryLoading && discoveryPrompt.trim().length >= 3 && suggestions.length === 0 && !discoveryError && (
+              <p className="mt-4 text-sm text-muted">No close matches yet. Try adding a medium, style, or goal.</p>
+            )}
+          </div>
+        </div>
+      </section>
       {trendingProjects.length > 0 && (
         <section>
           <h2 className="mb-6 text-2xl font-bold text-foreground">

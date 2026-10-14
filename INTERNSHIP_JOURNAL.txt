@@ -1,0 +1,931 @@
+CREATIVEHUB - INTERNSHIP PROJECT JOURNAL
+========================================
+
+Project title:
+    CreativeHub - A community platform for discovering and sharing creative work
+
+Repository:
+    creative-hub
+
+Technology:
+    Next.js 14, React, TypeScript, Tailwind CSS, Prisma, PostgreSQL,
+    Clerk authentication, Docker, Docker Compose, and GitHub Actions
+
+Document purpose:
+    This document summarizes the project, the work completed during the
+    internship, the technical decisions made, the problems encountered, the
+    validation performed, and the possible future improvements.
+
+
+1. PROJECT OVERVIEW
+===================
+
+CreativeHub is a full-stack web platform designed for creators who want to
+publish, organize, discover, and discuss creative work. The platform supports
+different types of digital content, including:
+
+    - 3D models
+    - Images
+    - Audio files
+    - PDF documents
+
+The main idea is to create a shared creative space where users can:
+
+    - Create an account and manage a profile.
+    - Upload creative projects.
+    - Present their work in a personal portfolio.
+    - Discover projects from other creators.
+    - Search and filter content.
+    - Like projects and follow other users.
+    - Comment on projects.
+    - Exchange private messages.
+    - Participate in forum discussions.
+    - Receive notifications about relevant activity.
+    - Use a natural-language discovery tool to find useful inspiration.
+
+The application is intended to be useful for designers, developers, 3D
+artists, photographers, audio producers, illustrators, students, and other
+creative professionals.
+
+
+2. MAIN OBJECTIVES
+==================
+
+The objectives of the project were:
+
+    1. Build a modern and responsive web application.
+    2. Allow users to share different kinds of creative work.
+    3. Store application data in a structured relational database.
+    4. Provide a safe authentication and authorization flow.
+    5. Create a useful project discovery experience.
+    6. Add community features such as forums and messaging.
+    7. Make the application easy to run locally and in a deployment
+       environment.
+    8. Add automated quality checks through continuous integration.
+    9. Populate the database with realistic test data.
+   10. Document the setup, architecture, and operational procedures.
+
+
+3. APPLICATION ARCHITECTURE
+===========================
+
+The application uses the following architecture:
+
+    Browser
+        |
+        v
+    Next.js App Router
+        |
+        +--> Clerk authentication
+        |
+        +--> API routes
+        |
+        +--> Application services in lib/
+        |
+        +--> Prisma ORM
+        |
+        v
+    PostgreSQL database
+
+Uploaded files are stored under the local public/uploads directory during
+the current phase. In Docker, uploads are stored in a persistent named
+volume so they survive container recreation.
+
+The application is organized into the following important areas:
+
+    app/
+        Pages, layouts, loading states, error states, and API routes.
+
+    components/
+        Reusable interface components, community components, viewers, and
+        administration components.
+
+    lib/
+        Database access, authentication helpers, storage logic, community
+        services, notifications, validation, and search logic.
+
+    prisma/
+        Database schema and migration history.
+
+    public/
+        Static assets and uploaded files.
+
+    .github/workflows/
+        Continuous integration configuration.
+
+
+4. TECHNOLOGIES USED
+====================
+
+Frontend:
+    - React 18
+    - Next.js 14 App Router
+    - TypeScript
+    - Tailwind CSS
+    - Lucide React icons
+    - React Dropzone for file upload interaction
+
+Backend:
+    - Next.js server components and API routes
+    - Prisma ORM
+    - PostgreSQL
+    - Zod validation
+    - Local filesystem storage for uploads
+
+Authentication:
+    - Clerk
+    - Clerk webhook integration for user synchronization
+    - Protected server-side actions and API routes
+
+DevOps:
+    - Docker
+    - Docker Compose
+    - PostgreSQL container
+    - Multi-stage production Docker image
+    - GitHub Actions CI
+    - npm dependency caching in CI
+
+
+5. FEATURES IMPLEMENTED
+=======================
+
+5.1 Authentication and profiles
+-------------------------------
+
+The application integrates Clerk for authentication. Users can sign up and
+sign in through the configured Clerk pages. The application synchronizes
+authenticated Clerk profiles with the local User table.
+
+User profiles contain:
+
+    - A unique username
+    - A Clerk identifier
+    - An avatar
+    - A biography
+    - Creation and update timestamps
+
+Users can access their own profile, view other users, and see projects
+associated with a creator.
+
+The application also contains protected functionality for:
+
+    - Creating projects
+    - Editing a profile
+    - Uploading files
+    - Sending messages
+    - Creating forum topics and replies
+    - Liking projects
+    - Accessing administrative features
+
+
+5.2 Creative project uploads
+----------------------------
+
+Users can upload projects through a drag-and-drop interface. The upload
+system validates:
+
+    - The selected category
+    - The file extension
+    - The MIME type
+    - The maximum file size
+    - Optional preview image validity
+
+The maximum upload size is 50 MB.
+
+Supported categories and examples include:
+
+    3D:
+        GLB and GLTF files.
+
+    Image:
+        JPG, JPEG, PNG, GIF, WEBP, SVG, and AVIF files.
+
+    Audio:
+        MP3, WAV, OGG, M4A, and FLAC files.
+
+    PDF:
+        PDF documents.
+
+Projects have:
+
+    - A title
+    - A description
+    - A category
+    - A media URL
+    - An optional thumbnail or preview
+    - A visibility state
+    - A moderation status
+    - Like and view counters
+    - Creation and update timestamps
+
+
+5.3 Category-specific viewers
+-----------------------------
+
+The project detail pages use different viewers depending on the content type:
+
+    - 3D viewer for GLB and GLTF models.
+    - Image gallery for image projects.
+    - Audio player for audio content.
+    - PDF viewer for PDF documents.
+
+This makes the project detail page appropriate for the uploaded content
+instead of treating every project as a generic file.
+
+
+5.4 Project discovery
+---------------------
+
+The home page contains:
+
+    - Latest projects
+    - Trending projects
+    - Category filters
+    - Text search
+    - Pagination and load-more behavior
+    - Responsive project cards
+
+The project listing supports filtering by:
+
+    - Category
+    - Search text
+    - User
+    - Latest or trending order
+
+The database query only returns active and public projects for the public
+discovery pages.
+
+
+5.5 Likes, views, comments, and activity
+----------------------------------------
+
+Users can like and unlike projects. Likes are protected by a unique
+constraint on the combination of user and project, preventing duplicate
+likes.
+
+The application records:
+
+    - Project views
+    - Project likes
+    - Unlike events
+    - Comments
+    - Shares
+
+Daily view aggregates are also stored to support future analytics while
+keeping the raw view event history available.
+
+Comments support replies through a self-referencing relation.
+
+
+5.6 Following and notifications
+-------------------------------
+
+Users can follow other creators. Follow relationships are protected by a
+unique constraint so that the same relationship cannot be inserted twice.
+
+Notifications can be generated for activities such as:
+
+    - Likes
+    - Messages
+    - Forum replies
+    - Other user activity
+
+Notifications have recipients, optional actors, optional project references,
+optional comment references, optional topic references, read state, and
+timestamps.
+
+
+5.7 Forums and community discussions
+------------------------------------
+
+The community area contains forum topics and replies.
+
+A forum topic includes:
+
+    - An author
+    - A title
+    - A body
+    - Creation and update timestamps
+    - A collection of replies
+
+A forum post includes:
+
+    - The topic it belongs to
+    - Its author
+    - Its body
+    - Creation and update timestamps
+
+The community routes allow users to:
+
+    - List discussion topics
+    - Open a topic
+    - Create a topic
+    - Reply to a topic
+    - Receive a notification when a topic receives a reply
+
+
+5.8 Private messages
+--------------------
+
+The messaging system supports direct conversations between two users.
+
+Conversations use a normalized pair of user IDs so the same two users share
+one conversation regardless of who starts it.
+
+Messages include:
+
+    - A sender
+    - A recipient
+    - A conversation
+    - Message text
+    - Creation timestamp
+    - Read timestamp
+
+Unread messages are marked as read when the conversation is opened.
+
+
+5.9 Administrative functionality
+--------------------------------
+
+The project includes administrative routes and dashboard components for
+managing platform activity. The data model includes support for:
+
+    - Reports
+    - Report statuses
+    - Project moderation statuses
+    - Audit logs
+    - Administrator identifiers
+
+This provides a foundation for reviewing reported content and tracking
+administrative actions.
+
+
+6. DATABASE IMPLEMENTATION
+==========================
+
+The initial application used JSON storage for early development and migration
+purposes. The project was moved to PostgreSQL with Prisma to provide:
+
+    - Relational data integrity
+    - Foreign key constraints
+    - Unique constraints
+    - Typed database queries
+    - Better support for concurrent users
+    - A clear migration history
+    - A path to deployment on managed PostgreSQL services
+
+Important database models include:
+
+    User
+    Category
+    Project
+    Tag
+    ProjectTag
+    Like
+    View
+    ViewDailyAggregate
+    Comment
+    Follow
+    Notification
+    Report
+    ProjectEvent
+    AuditLog
+    Conversation
+    Message
+    ForumTopic
+    ForumPost
+
+Important data integrity rules include:
+
+    - Unique Clerk IDs.
+    - Unique usernames.
+    - Unique user/project likes.
+    - Unique follower/following pairs.
+    - Unique conversation user pairs.
+    - Foreign key relationships with cascading behavior where appropriate.
+
+Important indexes include:
+
+    - Project category and creation date.
+    - Project status and visibility.
+    - Likes by project.
+    - Views by project and date.
+    - Messages by conversation and creation date.
+    - Messages by recipient and read state.
+    - Forum topics by creation date.
+    - Forum posts by topic and creation date.
+
+
+7. DATABASE SEEDING AND DEMO DATA
+=================================
+
+A repeatable demo seed script was created at:
+
+    lib/scripts/seed-demo.ts
+
+The script creates realistic development data using stable IDs and upserts.
+This means it can be executed multiple times without creating duplicate demo
+records.
+
+The seed includes:
+
+    - Demo users with usernames, avatars, biographies, and creation dates.
+    - Projects in every supported category.
+    - Project tags.
+    - Likes.
+    - Project views.
+    - Project activity events.
+    - Follows.
+    - Comments.
+    - Forum topics.
+    - Forum replies.
+    - Conversations.
+    - Direct messages.
+    - Notifications.
+
+At the time of this report, the seeded Docker database contains approximately:
+
+    - 13 users
+    - 12 projects
+    - 6 forum topics
+    - 9 forum posts
+    - 6 conversations
+    - 18 messages
+    - 12 follows
+    - 48 likes
+    - 12 comments
+
+The exact counts can increase when additional real users or projects are
+created.
+
+Seed command:
+
+    npm run seed:demo
+
+When PostgreSQL is running in Docker and the seed is executed from Windows
+PowerShell:
+
+    $env:DATABASE_URL="postgresql://creative_hub:creative_hub_dev@localhost:5432/creative_hub"
+    npm run seed:demo
+
+
+8. NATURAL-LANGUAGE DISCOVERY SEARCH
+====================================
+
+An AI-style discovery feature was added after selecting a no-cost local
+approach instead of using an external AI provider.
+
+The feature is available from the home page under:
+
+    Find inspiration for your next project
+
+The user can describe an idea, for example:
+
+    "I need an ambient soundtrack for a short film"
+
+The system then:
+
+    1. Normalizes the user query.
+    2. Removes common stop words.
+    3. Expands selected terms using a local synonym map.
+    4. Detects likely project categories.
+    5. Loads active and public projects from PostgreSQL.
+    6. Scores project titles, descriptions, categories, and tags.
+    7. Applies an additional score for a matching category.
+    8. Sorts projects by relevance.
+    9. Returns a small list of suggestions.
+   10. Explains why each result was selected.
+
+Examples of local term expansion:
+
+    ambient:
+        sound, audio, music, field, recording
+
+    architecture:
+        architectural, building, house, space, courtyard
+
+    branding:
+        brand, identity, logo, mark
+
+    generative:
+        procedural, creative, code, interactive
+
+    typography:
+        type, font, editorial, poster
+
+The API route is:
+
+    GET /api/discover?q=your-description
+
+The implementation is located in:
+
+    lib/ai-search.ts
+    app/api/discover/route.ts
+
+This approach is intentionally local and transparent. It does not send user
+queries or project data to an external AI service and does not require an
+external API key.
+
+Future versions could replace or extend the local ranking logic with semantic
+embeddings, vector search, or an external language model while keeping the
+same API contract.
+
+
+9. DEVOPS AND CONTAINERIZATION
+==============================
+
+Docker support was added to make the application easier to run consistently.
+
+The Dockerfile uses a multi-stage build:
+
+    1. Dependency stage:
+       Installs npm dependencies.
+
+    2. Builder stage:
+       Generates the Prisma client and creates the Next.js production build.
+
+    3. Runner stage:
+       Copies only the runtime files and starts the application as a
+       non-root user.
+
+The production container:
+
+    - Uses Node.js 20 Alpine.
+    - Uses Next.js standalone output.
+    - Runs Prisma migrations before starting Next.js.
+    - Exposes port 3000.
+    - Persists uploads through a mounted volume.
+
+Docker Compose provides two services:
+
+    db:
+        PostgreSQL 16 Alpine.
+
+    app:
+        The CreativeHub production application.
+
+The database service has a health check using pg_isready. The app waits until
+the database is healthy before starting.
+
+Named Docker volumes are used for:
+
+    - PostgreSQL data.
+    - Uploaded files.
+
+Useful commands:
+
+    docker compose --env-file .env.local up --build
+        Build and start the full application.
+
+    docker compose ps
+        Show service status.
+
+    docker compose logs -f app
+        Follow application logs.
+
+    docker compose down
+        Stop containers while preserving volumes.
+
+    docker compose down -v
+        Stop containers and remove stored database/upload volumes.
+
+An important issue encountered during Docker setup was running a manually
+created container outside Compose. That container did not receive
+DATABASE_URL and stopped during Prisma startup. The issue was diagnosed by
+checking docker ps, docker inspect, and docker logs. The correct solution was
+to use the Compose-managed services and provide the correct environment file.
+
+Another issue was that the Clerk publishable key is embedded during the
+Next.js production build. Passing the key only at container runtime was not
+sufficient. The Docker build was updated to accept the key as a build
+argument, and the Compose command was updated to load .env.local.
+
+
+10. CONTINUOUS INTEGRATION
+==========================
+
+A GitHub Actions workflow was added at:
+
+    .github/workflows/ci.yml
+
+The workflow runs on:
+
+    - Pushes to main.
+    - Pull requests.
+
+The workflow performs:
+
+    1. Repository checkout.
+    2. Node.js 20 setup.
+    3. npm dependency installation with npm ci.
+    4. Prisma client generation.
+    5. ESLint validation.
+    6. TypeScript validation.
+    7. Production build.
+
+The workflow uses npm caching and cancels outdated runs for the same branch or
+pull request.
+
+The following npm scripts are available:
+
+    npm run dev
+        Starts the development server.
+
+    npm run build
+        Creates a production build.
+
+    npm run start
+        Starts a production Next.js server.
+
+    npm run lint
+        Runs the Next.js ESLint configuration.
+
+    npm run typecheck
+        Runs TypeScript with no emit.
+
+    npm run prisma:generate
+        Generates the Prisma client.
+
+    npm run prisma:migrate
+        Runs Prisma development migrations.
+
+    npm run seed:demo
+        Inserts repeatable demo data.
+
+
+11. VALIDATION PERFORMED
+========================
+
+The project was validated through the following checks:
+
+    - npm run lint
+    - npm run typecheck
+    - npm run build
+    - npx prisma validate
+    - Docker image build
+    - Docker Compose service startup
+    - PostgreSQL health check
+    - HTTP request to http://localhost:3000
+    - Natural-language discovery query against seeded data
+
+Successful production application response:
+
+    HTTP/1.1 200 OK
+
+Successful Docker service state:
+
+    creative-hub-app-1   Up
+    creative-hub-db-1    Up (healthy)
+
+Successful discovery example:
+
+    Query:
+        ambient soundtrack for a short film
+
+    Top suggestions:
+        Rain on Glass
+        Night Bus Sketches
+        Field Notes on Color
+
+
+12. PROBLEMS ENCOUNTERED AND SOLUTIONS
+======================================
+
+Problem 1: Missing external image host configuration
+----------------------------------------------------
+
+Next.js rejected remote thumbnail URLs from picsum.photos and avatar URLs from
+api.dicebear.com because they were not configured in next.config.mjs.
+
+Solution:
+
+    Added both hosts to the Next.js images.remotePatterns configuration and
+    restarted the development server.
+
+Lesson:
+
+    Next.js Image optimization requires every external image hostname to be
+    explicitly configured.
+
+
+Problem 2: Prisma DATABASE_URL error
+------------------------------------
+
+Prisma reported:
+
+    Environment variable not found: DATABASE_URL
+
+Cause:
+
+    Prisma was executed from a process or container where DATABASE_URL had not
+    been defined.
+
+Solution:
+
+    - Confirmed that Prisma loads .env from the project root.
+    - Added explicit PowerShell setup instructions.
+    - Configured Docker Compose to pass DATABASE_URL to the app.
+    - Used localhost for host-side Prisma commands.
+    - Used db as the hostname inside the Compose network.
+
+Lesson:
+
+    Host and container environments use different database hostnames. The
+    database service name works inside Compose, while localhost is required
+    from the Windows host.
+
+
+Problem 3: Standalone Docker container stopped
+----------------------------------------------
+
+A container named sweet_wescoff exited with status 1 because it was started
+manually without Compose environment variables. Its logs showed the same
+missing DATABASE_URL Prisma error.
+
+Solution:
+
+    - Inspected the container with docker inspect.
+    - Read the failure with docker logs.
+    - Confirmed the Compose services were healthy.
+    - Switched to the Compose-managed app and database services.
+
+Lesson:
+
+    Production containers should be started through the documented Compose
+    configuration so dependencies, networks, health checks, and environment
+    variables are provided consistently.
+
+
+Problem 4: Invalid Clerk key in production middleware
+-----------------------------------------------------
+
+The application initially returned a 500 error because Docker used placeholder
+Clerk values. The Next.js middleware rejected the invalid publishable key.
+
+Solution:
+
+    - Loaded the local environment file for Compose.
+    - Passed NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY as a Docker build argument.
+    - Rebuilt the production image.
+    - Verified the application returned HTTP 200.
+
+Lesson:
+
+    Public Next.js environment variables may be embedded during build time.
+    Runtime environment configuration alone may not be sufficient for values
+    used by middleware or client-side code.
+
+
+Problem 5: Seed script missing in production image
+-----------------------------------------------
+
+The production Docker image does not include TypeScript source files, so
+running npm run seed:demo inside the production container failed because
+lib/scripts/seed-demo.ts was not present.
+
+Solution:
+
+    Executed the seed from the host against the exposed PostgreSQL port:
+
+    $env:DATABASE_URL="postgresql://creative_hub:creative_hub_dev@localhost:5432/creative_hub"
+    npm run seed:demo
+
+Lesson:
+
+    Development and data-management scripts should be kept separate from the
+    minimal production runtime image, or provided through a dedicated
+    maintenance image or one-off migration job.
+
+
+13. SECURITY AND RELIABILITY CONSIDERATIONS
+===========================================
+
+The project includes several security and reliability practices:
+
+    - Environment files containing real credentials are ignored by Git.
+    - Authentication checks are performed on protected routes.
+    - Input validation uses Zod.
+    - Upload extensions and MIME types are checked.
+    - Upload sizes are limited.
+    - Database relationships use foreign keys.
+    - Duplicate likes and follows are prevented by unique constraints.
+    - The production Docker container runs as a non-root user.
+    - Docker Compose uses health checks for PostgreSQL.
+    - API errors are returned explicitly instead of silently succeeding.
+    - Public discovery only returns active and public projects.
+
+Before production deployment, the following should be reviewed:
+
+    - Replace all local Docker passwords.
+    - Use managed secret storage.
+    - Rotate exposed or previously shared credentials.
+    - Add rate limiting to public and authenticated APIs.
+    - Add stricter file content validation and malware scanning.
+    - Move uploads to object storage such as S3 or Supabase Storage.
+    - Configure production Clerk domains and webhook secrets.
+    - Add database backups and monitoring.
+
+
+14. LEARNING OUTCOMES
+=====================
+
+During the project, the following technical skills were developed:
+
+    - Building a full-stack application with Next.js App Router.
+    - Structuring reusable React and TypeScript components.
+    - Creating API routes and server-side application services.
+    - Designing relational database schemas.
+    - Using Prisma migrations and typed queries.
+    - Integrating third-party authentication with Clerk.
+    - Validating user input and uploaded files.
+    - Handling relationships such as follows, likes, comments, and messages.
+    - Designing a forum and direct messaging data model.
+    - Implementing ranking logic for natural-language discovery.
+    - Creating repeatable database seed scripts.
+    - Writing a production Dockerfile.
+    - Running PostgreSQL and the app through Docker Compose.
+    - Debugging container logs and environment variables.
+    - Using health checks and persistent volumes.
+    - Adding GitHub Actions continuous integration.
+    - Running linting, type checking, builds, and runtime verification.
+    - Documenting setup and operational procedures.
+
+
+15. POSSIBLE FUTURE IMPROVEMENTS
+================================
+
+Short-term improvements:
+
+    - Add automated unit and integration tests.
+    - Add end-to-end tests for sign-in, upload, search, forums, and messages.
+    - Add better empty states and error messages.
+    - Add project editing and deletion confirmation flows.
+    - Add pagination to forum topics and messages.
+    - Add unread notification and message counters to navigation.
+    - Add richer project tag management.
+    - Add search result filters and sorting.
+
+Search improvements:
+
+    - Store search analytics without recording sensitive query content.
+    - Add stemming and typo tolerance.
+    - Add PostgreSQL full-text search.
+    - Add vector embeddings for semantic similarity.
+    - Add optional external AI integration behind a feature flag.
+    - Improve explanations with matched tags and fields.
+
+Production improvements:
+
+    - Move uploaded files to object storage.
+    - Add a reverse proxy and HTTPS.
+    - Add database backups and migrations in deployment pipelines.
+    - Add structured logging and error monitoring.
+    - Add health endpoints for the application.
+    - Add resource limits to Docker Compose.
+    - Add separate staging and production environments.
+    - Add automated vulnerability scanning.
+    - Add preview deployments for pull requests.
+
+Community improvements:
+
+    - Add topic categories and moderation tools.
+    - Add report actions from the user interface.
+    - Add edit and delete actions for forum posts.
+    - Add message pagination and attachments.
+    - Add user follow feeds.
+    - Add creator recommendations.
+
+
+16. FINAL SUMMARY
+=================
+
+CreativeHub evolved from a creative project showcase into a complete
+community-oriented platform. The implementation now covers project uploads,
+content discovery, authentication, profiles, likes, views, comments, follows,
+notifications, direct messaging, forums, demo data, local discovery search,
+Docker deployment, persistent storage, database migrations, and continuous
+integration.
+
+The project demonstrates the complete development lifecycle:
+
+    - Requirements and feature design.
+    - Frontend implementation.
+    - Backend API development.
+    - Relational database design.
+    - Authentication integration.
+    - Data migration and seeding.
+    - Runtime debugging.
+    - Containerization.
+    - CI automation.
+    - Documentation and operational validation.
+
+The application is currently runnable with Docker Compose and is available
+locally at:
+
+    http://localhost:3000
+
+The most important command for the complete local environment is:
+
+    docker compose --env-file .env.local up --build
+
+End of journal.

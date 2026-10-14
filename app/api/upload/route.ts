@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { saveProjectUpload } from "@/lib/local-store";
-import { MAX_FILE_SIZE, ProjectCategory, VALID_FILE_TYPES } from "@/types";
+import { savePreviewUpload, saveProjectUpload } from "@/lib/uploads";
+import { MAX_FILE_SIZE, VALID_FILE_TYPES } from "@/types";
+import { projectCategorySchema } from "@/lib/validations/project";
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -14,11 +15,8 @@ export async function POST(request: NextRequest) {
     const fileValue = formData.get("file");
     const file = fileValue instanceof File ? fileValue : null;
     const categoryValue = formData.get("category");
-    const category =
-      typeof categoryValue === "string" &&
-      Object.prototype.hasOwnProperty.call(VALID_FILE_TYPES, categoryValue)
-        ? (categoryValue as ProjectCategory)
-        : null;
+    const categoryResult = projectCategorySchema.safeParse(categoryValue);
+    const category = categoryResult.success ? categoryResult.data : null;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -52,15 +50,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const previewValue = formData.get("preview");
+    if (previewValue instanceof File) {
+      if (category === "Image") {
+        return NextResponse.json(
+          { error: "Image projects use the uploaded image as their preview" },
+          { status: 400 }
+        );
+      }
+
+      const previewExtension = `.${previewValue.name.split(".").pop()?.toLowerCase()}`;
+      const previewRules = VALID_FILE_TYPES.Image;
+      if (
+        previewValue.size > MAX_FILE_SIZE ||
+        !previewRules.extensions.includes(previewExtension) ||
+        (previewValue.type && !previewRules.mimeTypes.includes(previewValue.type))
+      ) {
+        return NextResponse.json(
+          { error: "Invalid preview image. Please upload a valid image under 50MB." },
+          { status: 400 }
+        );
+      }
+    }
+
     const { file_url, thumbnail_url, file_path } = await saveProjectUpload(
       user.clerk_id,
       category,
       file
     );
+    let previewUrl = thumbnail_url;
+    if (previewValue instanceof File) {
+      previewUrl = await savePreviewUpload(user.clerk_id, category, previewValue);
+    }
 
     return NextResponse.json({
       file_url,
-      thumbnail_url,
+      thumbnail_url: previewUrl,
       file_path,
     });
   } catch (error) {

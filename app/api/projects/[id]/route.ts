@@ -6,9 +6,10 @@ import {
   getCurrentUserLike,
   getProjectById,
   incrementProjectViews,
-  removeProjectFile,
   updateProject,
-} from "@/lib/local-store";
+} from "@/lib/store";
+import { removeProjectFile } from "@/lib/uploads";
+import { updateProjectSchema } from "@/lib/validations/project";
 
 export async function GET(
   _request: NextRequest,
@@ -42,32 +43,24 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const title = typeof body.title === "string" ? body.title.trim() : undefined;
-  const description =
-    typeof body.description === "string" ? body.description.trim() : body.description;
-
-  if (title !== undefined && (!title || title.length > 100)) {
-    return NextResponse.json({ error: "Invalid title" }, { status: 400 });
+  const parsed = updateProjectSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid project input" }, { status: 400 });
   }
 
-  if (description !== undefined && description !== null && description.length > 5000) {
-    return NextResponse.json(
-      { error: "Description must be 5000 characters or fewer" },
-      { status: 400 }
-    );
-  }
-
-  const project = await updateProject(id, currentUser.id, {
-    title,
-    description,
-  });
+  const project = await updateProject(id, currentUser.id, parsed.data);
 
   if (!project) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

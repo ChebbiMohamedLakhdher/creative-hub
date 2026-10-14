@@ -6,7 +6,11 @@ import EditProfileForm from "@/components/ui/EditProfileForm";
 import { formatDate } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Project } from "@/types";
-import { getUserById, getUserProjects } from "@/lib/local-store";
+import { getUserById, getUserProjects } from "@/lib/store";
+import Link from "next/link";
+import { MessageCircle } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 async function getUser(id: string) {
   return getUserById(id);
@@ -69,6 +73,15 @@ export default async function UserProfilePage({
           </div>
           {isOwnProfile && (
             <EditProfileForm username={user.username} bio={user.bio} />
+          )}
+          {!isOwnProfile && currentUser && (
+            <Link
+              href={`/messages?userId=${user.id}`}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Message
+            </Link>
           )}
         </div>
       </div>
